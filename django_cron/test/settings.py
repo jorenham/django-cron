@@ -94,3 +94,5 @@ CRON_CLASSES = [
     f"{_CRON_PATH}Wait3secCronJob",
     "django_cron.cron.FailedRunsNotificationCronJob",
 ]
+
+USE_TZ = False
