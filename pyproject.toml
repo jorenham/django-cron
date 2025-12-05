@@ -39,4 +39,5 @@ Issues = "https://github.com/jorenham/django-cron/issues"
 dev = [
     "freezegun==1.5.5",
     "mock==5.2.0",
+    "django-stubs",
 ]
