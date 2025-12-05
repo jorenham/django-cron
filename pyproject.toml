@@ -1,33 +1,42 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.9,<0.10"]
+build-backend = "uv_build"
 
-[tool.poetry]
+[tool.uv.build-backend]
+module-root = ""
+
+[project]
 name = "django-cron"
-version = "0.6.0"
 description = "Running python crons in a Django project"
+version = "0.7.0"
 authors = [
-    "Sumit Chachra <chachra@tivix.com>",
-    "Joren Hammudoglu <jhammudoglu@gmail.com>",
+    {name = "Sumit Chachra", email = "chachra@tivix.com"},
+    {name = "Joren Hammudoglu", email = "jhammudoglu@gmail.com"},
 ]
+license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.rst"
 classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Framework :: Django",
 ]
-repository = "https://github.com/jorenham/django-cron"
+requires-python = ">=3.10"
+dependencies = [
+    "django>=4.2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-django = ">=4.2,<6.0"
+[project.urls]
+Repository = "https://github.com/jorenham/django-cron"
+Issues = "https://github.com/jorenham/django-cron/issues"
 
-[tool.poetry.group.dev.dependencies]
-freezegun = "^1.5.1"
-mock = "^5.1.0"
+[dependency-groups]
+dev = [
+    "freezegun==1.5.5",
+    "mock==5.2.0",
+]
