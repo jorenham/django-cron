@@ -1,9 +1,10 @@
-from django.utils.timezone import now as utc_now, localtime, is_naive
-from django.utils.translation import gettext as _
+from datetime import timedelta
+
 from django.template.defaultfilters import pluralize
+from django.utils.translation import gettext as _
 
 
-def humanize_duration(duration):
+def humanize_duration(duration: timedelta) -> str:
     """
     Returns a humanized string representing time difference
 
@@ -30,7 +31,7 @@ def humanize_duration(duration):
     return ", ".join(parts) if len(parts) != 0 else _("< 1 second")
 
 
-def get_class(kls):
+def get_class(kls: str) -> type:
     """
     Converts a string to a class.
     Courtesy: http://stackoverflow.com/questions/452969/does-python-have-an-equivalent-to-java-class-forname/452981#452981
@@ -45,8 +46,3 @@ def get_class(kls):
     for comp in parts[1:]:
         m = getattr(m, comp)
     return m
-
-
-def get_current_time():
-    now = utc_now()
-    return now if is_naive(now) else localtime(now)

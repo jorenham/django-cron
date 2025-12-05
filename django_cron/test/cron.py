@@ -73,9 +73,7 @@ class RunOnMonthDaysCronJob(CronJobBase):
     code = "run_on_month_days"
     schedule = Schedule(
         run_monthly_on_days=[1, 10, 20],
-        run_at_times=[
-            "0:00",
-        ],
+        run_at_times=["0:00"],
     )
 
     def do(self):

@@ -2,13 +2,15 @@ import logging
 import sys
 import time
 import traceback
+from collections.abc import Container, Sequence
 from datetime import datetime, timedelta
+from typing import ClassVar, Literal, TypeAlias
 
 from django.conf import settings
 from django.db.models import Q
-from django.utils.timezone import now as utc_now
+from django.utils import timezone
 
-from .helpers import get_class, get_current_time
+from .helpers import get_class
 
 __all__ = [
     "DEFAULT_LOCK_BACKEND",
@@ -19,6 +21,12 @@ __all__ = [
     "Schedule",
 ]
 
+_Weekday: TypeAlias = Literal[0, 1, 2, 3, 4, 5, 6]
+_Monthday: TypeAlias = Literal[
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+    23, 24, 25, 26, 27, 28, 29, 30, 31,
+]  # fmt: skip
+
 DEFAULT_LOCK_BACKEND = "django_cron.backends.lock.cache.CacheLock"
 DJANGO_CRON_OUTPUT_ERRORS = False
 logger = logging.getLogger("django_cron")
@@ -28,15 +36,22 @@ class BadCronJobError(AssertionError):
     pass
 
 
-class Schedule(object):
+class Schedule:
+    run_every_mins: float | None
+    run_at_times: Sequence[str]
+    retry_after_failure_mins: float | None
+    run_weekly_on_days: Container[_Weekday] | None
+    run_monthly_on_days: Container[_Monthday] | None
+    run_tolerance_seconds: float
+
     def __init__(
         self,
-        run_every_mins=None,
-        run_at_times=None,
-        retry_after_failure_mins=None,
-        run_weekly_on_days=None,
-        run_monthly_on_days=None,
-        run_tolerance_seconds=0,
+        run_every_mins: float | None = None,
+        run_at_times: Sequence[str] | None = None,
+        retry_after_failure_mins: float | None = None,
+        run_weekly_on_days: Container[_Weekday] | None = None,
+        run_monthly_on_days: Container[_Monthday] | None = None,
+        run_tolerance_seconds: float = 0,
     ):
         if run_at_times is None:
             run_at_times = []
@@ -48,7 +63,7 @@ class Schedule(object):
         self.run_tolerance_seconds = run_tolerance_seconds
 
 
-class CronJobBase(object):
+class CronJobBase:
     """
     Sub-classes should have the following properties:
     + code - This should be a code specific to the cron being run. Eg. 'general.stats' etc.
@@ -59,6 +74,9 @@ class CronJobBase(object):
     """
 
     remove_successful_cron_logs = False
+
+    code: ClassVar[str]
+    schedule: ClassVar[Schedule]
 
     def __init__(self):
         self.prev_success_cron = None
@@ -77,14 +95,18 @@ class CronJobBase(object):
             last_job = CronJobLog.objects.filter(code=cls.code).latest("start_time")
         except CronJobLog.DoesNotExist:
             return timedelta()
+
         return (
             last_job.start_time
-            + timedelta(minutes=cls.schedule.run_every_mins)
-            - utc_now()
+            + timedelta(minutes=cls.schedule.run_every_mins or 0)
+            - timezone.now()
         )
 
+    def do(self) -> None:
+        raise NotImplementedError
 
-class CronJobManager(object):
+
+class CronJobManager:
     """
     A manager instance should be created per cron job to be run.
     Does all the logger tracking etc. for it.
@@ -92,7 +114,13 @@ class CronJobManager(object):
     proper logger in cases of job failure.
     """
 
-    def __init__(self, cron_job_class, silent=False, dry_run=False, stdout=None):
+    def __init__(
+        self,
+        cron_job_class: type,
+        silent: bool = False,
+        dry_run: bool = False,
+        stdout=None,
+    ):
         self.cron_job_class = cron_job_class
         self.silent = silent
         self.dry_run = dry_run
@@ -136,7 +164,7 @@ class CronJobManager(object):
             if (
                 last_job
                 and not last_job.is_success
-                and get_current_time()
+                and timezone.now()
                 + timedelta(seconds=cron_job.schedule.run_tolerance_seconds)
                 <= last_job.start_time
                 + timedelta(minutes=cron_job.schedule.retry_after_failure_mins)
@@ -154,7 +182,7 @@ class CronJobManager(object):
                 pass
 
             if self.previously_ran_successful_cron:
-                if get_current_time() + timedelta(
+                if timezone.now() + timedelta(
                     seconds=cron_job.schedule.run_tolerance_seconds
                 ) > self.previously_ran_successful_cron.start_time + timedelta(
                     minutes=cron_job.schedule.run_every_mins
@@ -166,7 +194,7 @@ class CronJobManager(object):
         if cron_job.schedule.run_at_times:
             for time_data in cron_job.schedule.run_at_times:
                 user_time = time.strptime(time_data, "%H:%M")
-                now = get_current_time()
+                now = timezone.now()
                 actual_time = time.strptime("%s:%s" % (now.hour, now.minute), "%H:%M")
                 if actual_time >= user_time:
                     qset = CronJobLog.objects.filter(
@@ -194,7 +222,7 @@ class CronJobManager(object):
         cron_log.is_success = kwargs.get("success", True)
         cron_log.message = self.make_log_msg(messages)
         cron_log.ran_at_time = getattr(self, "user_time", None)
-        cron_log.end_time = get_current_time()
+        cron_log.end_time = timezone.now()
         cron_log.save()
 
         if not cron_log.is_success and self.write_log:
@@ -213,7 +241,7 @@ class CronJobManager(object):
     def __enter__(self):
         from django_cron.models import CronJobLog
 
-        self.cron_log = CronJobLog(start_time=get_current_time())
+        self.cron_log = CronJobLog(start_time=timezone.now())
 
         return self
 

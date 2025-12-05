@@ -6,6 +6,9 @@ class CronJobLog(models.Model):
     Keeps track of the cron jobs that ran etc. and any error
     messages if they failed.
     """
+
+    id: int
+
     code = models.CharField(max_length=64)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
