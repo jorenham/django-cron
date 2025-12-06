@@ -1,7 +1,8 @@
+import datetime
+
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
-from django.utils import timezone
 
 from django_cron import CronJobBase, Schedule
 
@@ -36,6 +37,6 @@ class WriteDateToFileCronJob(CronJobBase):
     code = 'cron.WriteDateToFileCronJob'
 
     def do(self):
-        message = f"Current date: {timezone.now()} \n"
+        message = f"Current date: {datetime.datetime.now()} \n"
         with open("cron-demo.txt", "w") as myfile:
             myfile.write(message)

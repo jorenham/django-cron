@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.template.defaultfilters import pluralize
+from django.utils import timezone
 from django.utils.translation import gettext as _
 
 
@@ -46,3 +47,8 @@ def get_class(kls: str) -> type:
     for comp in parts[1:]:
         m = getattr(m, comp)
     return m
+
+
+def get_current_time():
+    now = timezone.now()
+    return now if timezone.is_naive(now) else timezone.localtime(now)

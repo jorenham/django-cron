@@ -4,10 +4,9 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import close_old_connections
-from django.utils import timezone
 
 from django_cron.core import CronJobManager
-from django_cron.helpers import get_class
+from django_cron.helpers import get_class, get_current_time
 from django_cron.models import CronJobLog
 
 DEFAULT_LOCK_TIME = 24 * 60 * 60  # 24 hours
@@ -88,4 +87,4 @@ def clear_old_log_entries():
     """
     if hasattr(settings, "DJANGO_CRON_DELETE_LOGS_OLDER_THAN"):
         delta = timedelta(days=settings.DJANGO_CRON_DELETE_LOGS_OLDER_THAN)
-        CronJobLog.objects.filter(end_time__lt=timezone.now() - delta).delete()
+        CronJobLog.objects.filter(end_time__lt=get_current_time() - delta).delete()
