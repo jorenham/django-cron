@@ -8,7 +8,7 @@ module-root = ""
 [project]
 name = "django-cron"
 description = "Running python crons in a Django project"
-version = "0.7.0"
+version = "0.7.1"
 authors = [
     {name = "Sumit Chachra", email = "chachra@tivix.com"},
     {name = "Joren Hammudoglu", email = "jhammudoglu@gmail.com"},
