@@ -1,4 +1,8 @@
 import os
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from io import BufferedRandom
 
 from django.conf import settings
 from django.core.files import locks
@@ -11,7 +15,7 @@ class FileLock(DjangoCronJobLock):
     Quite a simple lock backend that uses kernel based locking
     """
 
-    __lock_fd = None
+    __lock_fd: "BufferedRandom | None" = None
 
     def lock(self):
         lock_name = self.get_lock_name()
@@ -23,8 +27,12 @@ class FileLock(DjangoCronJobLock):
         return True
 
     def release(self):
-        locks.unlock(self.__lock_fd)
-        self.__lock_fd.close()
+        lock = self.__lock_fd
+        if lock is None:
+            raise RuntimeError("cannot release an unacquired lock")
+
+        locks.unlock(lock)
+        lock.close()
 
     def get_lock_name(self):
         default_path = "/tmp"

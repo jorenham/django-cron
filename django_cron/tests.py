@@ -1,5 +1,6 @@
+import datetime
 import threading
-from datetime import datetime, timedelta
+from datetime import timedelta
 from time import sleep
 
 from django import db
@@ -38,7 +39,7 @@ class OutBuffer(object):
         return self._str_cache
 
 
-def call(command: str, *args, **kwargs) -> str:
+def call(command, *args, **kwargs):
     """
     Run the runcrons management command with a supressed output.
     """
@@ -329,19 +330,19 @@ class TestRunCrons(TransactionTestCase):
             self.assertEqual(humanize_duration(duration), humanized)
 
     def test_remove_old_succeeded_job_logs(self):
-        mock_date = datetime(2022, 5, 1, 12, 0, 0)
+        mock_date = datetime.datetime(2022, 5, 1, 12, 0, 0)
         for _ in range(5):
             with freeze_time(mock_date):
                 call_command("runcrons", self.run_and_remove_old_logs)
             self.assertEqual(CronJobLog.objects.all().count(), 1)
-            self.assertEqual(CronJobLog.objects.all()[0].end_time, mock_date)
+            self.assertEqual(CronJobLog.objects.get().end_time, mock_date)
 
     def test_run_job_with_logs_in_future(self):
-        mock_date_in_future = datetime(2222, 5, 1, 12, 0, 0)
+        mock_date_in_future = datetime.datetime(2222, 5, 1, 12, 0, 0)
         with freeze_time(mock_date_in_future):
             call_command("runcrons", self.cron_5mins)
             self.assertEqual(CronJobLog.objects.all().count(), 1)
-            self.assertEqual(CronJobLog.objects.all()[0].end_time, mock_date_in_future)
+            self.assertEqual(CronJobLog.objects.get().end_time, mock_date_in_future)
 
         mock_date_in_past = mock_date_in_future - timedelta(days=1000)
         with freeze_time(mock_date_in_past):

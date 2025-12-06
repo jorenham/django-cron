@@ -4,13 +4,13 @@ import time
 import traceback
 from collections.abc import Container, Sequence
 from datetime import datetime, timedelta
-from typing import ClassVar, Literal, TypeAlias
+from typing import Any, ClassVar
 
 from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
-from .helpers import get_class
+from .helpers import get_class, get_current_time
 
 __all__ = [
     "DEFAULT_LOCK_BACKEND",
@@ -20,12 +20,6 @@ __all__ = [
     "CronJobManager",
     "Schedule",
 ]
-
-_Weekday: TypeAlias = Literal[0, 1, 2, 3, 4, 5, 6]
-_Monthday: TypeAlias = Literal[
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-    23, 24, 25, 26, 27, 28, 29, 30, 31,
-]  # fmt: skip
 
 DEFAULT_LOCK_BACKEND = "django_cron.backends.lock.cache.CacheLock"
 DJANGO_CRON_OUTPUT_ERRORS = False
@@ -40,8 +34,8 @@ class Schedule:
     run_every_mins: float | None
     run_at_times: Sequence[str]
     retry_after_failure_mins: float | None
-    run_weekly_on_days: Container[_Weekday] | None
-    run_monthly_on_days: Container[_Monthday] | None
+    run_weekly_on_days: Container[int] | None
+    run_monthly_on_days: Container[int] | None
     run_tolerance_seconds: float
 
     def __init__(
@@ -49,8 +43,8 @@ class Schedule:
         run_every_mins: float | None = None,
         run_at_times: Sequence[str] | None = None,
         retry_after_failure_mins: float | None = None,
-        run_weekly_on_days: Container[_Weekday] | None = None,
-        run_monthly_on_days: Container[_Monthday] | None = None,
+        run_weekly_on_days: Container[int] | None = None,
+        run_monthly_on_days: Container[int] | None = None,
         run_tolerance_seconds: float = 0,
     ):
         if run_at_times is None:
@@ -95,14 +89,13 @@ class CronJobBase:
             last_job = CronJobLog.objects.filter(code=cls.code).latest("start_time")
         except CronJobLog.DoesNotExist:
             return timedelta()
-
         return (
             last_job.start_time
             + timedelta(minutes=cls.schedule.run_every_mins or 0)
             - timezone.now()
         )
 
-    def do(self) -> None:
+    def do(self) -> Any:
         raise NotImplementedError
 
 
@@ -164,7 +157,7 @@ class CronJobManager:
             if (
                 last_job
                 and not last_job.is_success
-                and timezone.now()
+                and get_current_time()
                 + timedelta(seconds=cron_job.schedule.run_tolerance_seconds)
                 <= last_job.start_time
                 + timedelta(minutes=cron_job.schedule.retry_after_failure_mins)
@@ -182,7 +175,7 @@ class CronJobManager:
                 pass
 
             if self.previously_ran_successful_cron:
-                if timezone.now() + timedelta(
+                if get_current_time() + timedelta(
                     seconds=cron_job.schedule.run_tolerance_seconds
                 ) > self.previously_ran_successful_cron.start_time + timedelta(
                     minutes=cron_job.schedule.run_every_mins
@@ -194,7 +187,7 @@ class CronJobManager:
         if cron_job.schedule.run_at_times:
             for time_data in cron_job.schedule.run_at_times:
                 user_time = time.strptime(time_data, "%H:%M")
-                now = timezone.now()
+                now = get_current_time()
                 actual_time = time.strptime("%s:%s" % (now.hour, now.minute), "%H:%M")
                 if actual_time >= user_time:
                     qset = CronJobLog.objects.filter(
@@ -222,7 +215,7 @@ class CronJobManager:
         cron_log.is_success = kwargs.get("success", True)
         cron_log.message = self.make_log_msg(messages)
         cron_log.ran_at_time = getattr(self, "user_time", None)
-        cron_log.end_time = timezone.now()
+        cron_log.end_time = get_current_time()
         cron_log.save()
 
         if not cron_log.is_success and self.write_log:
@@ -241,7 +234,7 @@ class CronJobManager:
     def __enter__(self):
         from django_cron.models import CronJobLog
 
-        self.cron_log = CronJobLog(start_time=timezone.now())
+        self.cron_log = CronJobLog(start_time=get_current_time())
 
         return self
 
