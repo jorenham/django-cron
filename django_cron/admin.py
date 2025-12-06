@@ -30,7 +30,7 @@ class DurationFilter(admin.SimpleListFilter):
         if self.value() == "gt_day":
             return queryset.filter(end_time__gt=F("start_time") + timedelta(days=1))
 
-
+@admin.register(CronJobLog)
 class CronJobLogAdmin(admin.ModelAdmin):
     class Meta:
         model = CronJobLog
@@ -52,17 +52,14 @@ class CronJobLogAdmin(admin.ModelAdmin):
         )
 
     def get_readonly_fields(self, request, obj=None):
-        if not request.user.is_superuser and obj is not None:
+        if obj is not None and not getattr(request.user, "is_superuser", False):
             names = [f.name for f in CronJobLog._meta.fields if f.name != "id"]
-            return self.readonly_fields + tuple(names)
+            return *self.readonly_fields, *names
         return self.readonly_fields
 
+    @admin.display(description=_("Duration"), ordering="duration")
     def humanize_duration(self, obj):
         return humanize_duration(obj.end_time - obj.start_time)
 
-    humanize_duration.short_description = _("Duration")
-    humanize_duration.admin_order_field = "duration"
 
-
-admin.site.register(CronJobLog, CronJobLogAdmin)
 admin.site.register(CronJobLock)

@@ -64,7 +64,11 @@ class Command(BaseCommand):
 
 
 def run_cron_with_cache_check(
-    cron_class, force=False, silent=False, dry_run=False, stdout=None
+    cron_class: type,
+    force: bool = False,
+    silent: bool = False,
+    dry_run: bool = False,
+    stdout=None,
 ):
     """
     Checks the cache and runs the cron or not.

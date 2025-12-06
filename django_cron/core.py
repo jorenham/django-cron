@@ -91,7 +91,7 @@ class CronJobBase:
             return timedelta()
         return (
             last_job.start_time
-            + timedelta(minutes=cls.schedule.run_every_mins)
+            + timedelta(minutes=cls.schedule.run_every_mins or 0)
             - timezone.now()
         )
 
